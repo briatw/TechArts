@@ -2,20 +2,32 @@
 <html>
  <head>
   <meta charset="utf-8"/>
+  <script src="soundfont-player.js"></script>
   <script type="application/javascript">
     function ballbo(){
       var canvas = document.getElementById('canvas');
       var ctx = canvas.getContext('2d');
       var raf;
       var running = false;
+      const colorCycle = ["#F72585", "#7209B7", "#3A0CA3", "#4361EE", "#4CC9F0"];
+      const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"];
+      var corner = false;
+      const song = new Audio('song.mp3');
+
+      //for the music
+      // PROBABLY NO LONGER NECESSARY
+      if (navigator.requestMIDIAccess) {
+          console.log('Browser supports MIDI!');
+      }
 
       var ball = {
         x: 100,
         y: 100,
         vx: 5,
-        vy: 1,
+        vy: 2,
+        i: 0,
         radius: 25,
-        color: 'blue',
+        color: "#EDDCD2",
         draw: function() {
           ctx.beginPath();
           ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, true);
@@ -26,7 +38,7 @@
       };
 
       function clear() {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0,0,canvas.width,canvas.height);
       }
 
@@ -36,14 +48,95 @@
         ball.x += ball.vx;
         ball.y += ball.vy;
 
-        if (ball.y + ball.vy > canvas.height || ball.y + ball.vy < 0) {
+        // if the ball hits the top or bottom
+        if (ball.y + ball.vy > canvas.height | ball.y + ball.vy < 0) {
           ball.vy = -ball.vy;
-        }
-        if (ball.x + ball.vx > canvas.width || ball.x + ball.vx < 0) {
-          ball.vx = -ball.vx;
+
+          // check if it is a corner
+          if (ball.x < 5 || ball.x > canvas.width - 5) {
+            corner = true;
+            cornerTime();
+          }
+
+          if (!corner) {
+            console.log("ball height just y = ",ball.y);
+            console.log("ball height y and vy = ", ball.y + ball.vy);
+            var colorIndex = Math.floor(4 * ball.y/canvas.height);
+
+            // choosing the right note
+            var context = new AudioContext();
+            var note = Math.floor(6*ball.y/canvas.height) + 1;
+            if (ball.y > canvas.height - 5) {
+              console.log("greater than");
+              note = 7;
+            }
+            if (ball.y < 5) {
+              console.log("less than");
+              note = 0;
+            }
+            console.log("music",note)
+            Soundfont.instrument(context, 'acoustic_grand_piano').then(function (clavinet) {
+              clavinet.play(notes[note]);
+            })
+            console.log('color', colorIndex);
+            ball.color = colorCycle[colorIndex];
+          }
         }
 
+        // if the ball hits the sides
+        if (ball.x + ball.vx > canvas.width | ball.x + ball.vx < 0) {
+          ball.vx = -ball.vx;
+
+
+          // check if it is a corner
+          if (ball.y < 5 || ball.y > canvas.height - 5) {
+            corner = true;
+            cornerTime();
+          }
+
+          // if it hasn't hit a corner yet
+          if (!corner) {
+            // color picker
+            var colorIndex = Math.floor(4 * ball.y/canvas.height);
+
+            // choosing the right note
+            var context = new AudioContext();
+            var note = Math.floor(6*ball.y/canvas.height) + 1;
+            console.log("music",note)
+            Soundfont.instrument(context, 'acoustic_grand_piano').then(function (clavinet) {
+              clavinet.play(notes[note]);
+            })
+            console.log('color', colorIndex);
+            ball.color = colorCycle[colorIndex];
+          }
+        }
         raf = window.requestAnimationFrame(draw);
+      }
+
+      // PROBABLY NO LONGER NECESSARY
+      function midiNoteToFrequency (note) {
+          return Math.pow(2, ((note - 69) / 12)) * 440;
+          console.log('made frequency')
+      }
+
+      const timer = ms => new Promise(res => setTimeout(res, ms))
+
+      async function cornerTime(){
+        console.log("it's corner time!)");
+        ball.vy *= 2;
+        ball.vx *= 2;
+        console.log(song.volume);
+        song.play();
+        song.loop =true;
+        for (var i = 0; i < 50; ++i)
+          {
+            var red = Math.sin(.3*i + 0) * 127 + 128;
+            var grn = Math.sin(.3*i + 2) * 127 + 128;
+            var blu = Math.sin(.3*i + 4) * 127 + 128;
+            console.log( '<font color="' + (red,grn,blu) + '">&#9608;</font>');
+            ball.color((red,grn,blu));
+            await timer(3000);
+          }
       }
 
       canvas.addEventListener('mousemove', function(e) {
@@ -64,24 +157,14 @@
 
       canvas.addEventListener('mouseout', function(e) {
         window.cancelAnimationFrame(raf);
+        song.pause();
+        corner = false;
         running = false;
-      });
+     });
 
       ball.draw();
     }
   </script>
-  <style>
-    #canvas {
-        position: fixed;
-        z-index: -1;
-    }
-
-    body {
-        margin: 0;
-        padding: 0;
-        background-color: rgba(0,0,0,0.05);
-    }
-  </style>
  </head>
  <body onload="ballbo();">
    <canvas id="canvas" width="900" height="600"></canvas>

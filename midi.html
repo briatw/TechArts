@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8"/>
+  <audio src='song.mp3' id = audio></audio>
+  <script type="application/javascript">
+    function music(){
+        var boobs = document.getElementById("boobs");
+        if (navigator.requestMIDIAccess) {
+            console.log('Browser supports MIDI!');
+        }
+
+        // var context = new AudioContext(), oscillators = {};
+
+        // if (navigator.requestMIDIAccess) {
+        //     navigator.requestMIDIAccess()
+        //         .then(success, failure);
+        // }
+        // function success (midi) {
+        //     console.log('Got midi!', midi);
+        //     var inputs = midi.inputs.values();
+        //     // inputs is an Iterator
+        
+        //     for (var input = inputs.next(); input && !input.done; input = inputs.next()) {
+        //         // each time there is a midi message call the onMIDIMessage function
+        //         input.value.onmidimessage = onMIDIMessage;
+        //     }
+        // }
+        
+        // function failure () {
+        //     console.error('No access to your midi devices.')
+        // }
+
+        // Making a little web instrument
+        // function onMIDIMessage (message) {
+        //     console.log(message.data);
+        //     var frequency = midiNoteToFrequency(message.data[1]);
+        //     if (message.data[0] === 144 && message.data[2] > 0) {
+        //         playNote(frequency);
+        //     }
+        //     if (message.data[0] === 128 || message.data[2] === 0) {
+        //         stopNote(frequency);
+        //     }
+        // }
+        
+        function midiNoteToFrequency (note) {
+            return Math.pow(2, ((note - 69) / 12)) * 440;
+            console.log('made frequency')
+        }
+        
+        // function playNote (frequency) {
+        //     oscillators[frequency] = context.createOscillator();
+        //     oscillators[frequency].frequency.value = frequency;
+        //     oscillators[frequency].connect(context.destination);
+        //     oscillators[frequency].start(context.currentTime);
+        //     console.log('note played')
+        // }
+        
+        // function stopNote (frequency) {
+        //     oscillators[frequency].stop(context.currentTime);
+        //     oscillators[frequency].disconnect();
+        // }
+
+        var context = new AudioContext();
+        boobs.addEventListener('click', function(e){
+            console.log('clicky')
+            var osc = context.createOscillator();
+            osc.type = "square"
+            
+            osc.connect(context.destination);
+            osc.frequency.value = midiNoteToFrequency(61);
+            // osc.start(context.currentTime);
+            // osc.stop(context.currentTime + 1);
+
+            const music = new Audio('song.mp3');
+            music.play();
+            music.loop =true;
+            // const audioContext = new AudioContext();
+            // const element = document.querySelector(document.getElementById(audio));
+            // const source = audioContext.createMediaElementSource(element);
+            // source.connect(audioContext.destination)
+            // audio.play();
+            
+        });
+    }
+  </script>
+  <style>
+      body {
+          height: 100vh;
+          width: 100vw;
+      }
+  </style>
+ </head>
+ <body onload="music();" id='boobs'>
+ </body>
+</html>
