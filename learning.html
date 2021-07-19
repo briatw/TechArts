@@ -2,35 +2,182 @@
 <html>
  <head>
   <meta charset="utf-8"/>
+  <script src="soundfont-player.js"></script>
   <script type="application/javascript">
-    function draw() {
+    function ballbo(){
       var canvas = document.getElementById('canvas');
-      if (canvas.getContext) {
-        var ctx = canvas.getContext('2d');
-        for (var i = 0; i < 4; i++) {
-            for (var j = 0; j < 3; j++) {
-                ctx.beginPath();
-                var x = 25 + j * 50; // x coordinate
-                var y = 25 + i * 50; // y coordinate
-                var radius = 20; // Arc radius
-                var startAngle = 0; // Starting point on circle
-                var endAngle = Math.PI + (Math.PI * j) / 2; // End point on circle
-                var counterclockwise = i % 2 !== 0; // clockwise or counterclockwise
+      var ctx = canvas.getContext('2d');
+      ctx.canvas.width  = window.innerWidth;
+      ctx.canvas.height = window.innerHeight;
+      var raf;
+      var running = false;
+      const colorCycle = ["#FFADAD", "#FFD6A5", "#FDFFB6", "#CAFFBF", "#9BF6FF", "#A0C4FF", "#BDB2FF", "#FFC6FF"];
+      const notes = ["C4", "D4", "Eb4", "F4", "G4", "Ab4", "Bb4", "C5"];
+      var corner = false;
+      const song = new Audio('song.mp3');
 
-                ctx.arc(x, y, radius, startAngle, endAngle, counterclockwise);
-
-                if (i > 1) {
-                    ctx.fill();
-                } else {
-                    ctx.stroke();
-                }
-            }
+      var ball = {
+        x: 100,
+        y: 100,
+        vx: 5,
+        vy: 2,
+        i: 0,
+        radius: 25,
+        color: "#FFFFFC",
+        draw: function() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, true);
+          ctx.closePath();
+          ctx.fillStyle = this.color;
+          ctx.fill();
         }
+      };
+
+      function clear() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
       }
+
+      function draw() {
+        clear();
+        ball.draw();
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // if the ball hits the top or bottom
+        if (ball.y + ball.vy > canvas.height | ball.y + ball.vy < 0) {
+          ball.vy = -ball.vy;
+
+          if (!corner) {
+
+            // check if it is a corner
+            if (ball.x < 5 || ball.x > canvas.width - 5) {
+              corner = true;
+              cornerTime();
+            }
+            else {
+              // color picker
+              var colorIndex = Math.floor(6 * ball.y/canvas.height) + 1;
+              // choosing the right note
+              var context = new AudioContext();
+              var note = Math.floor(6*ball.y/canvas.height) + 1;
+              if (ball.y > canvas.height - 5) {
+                console.log("greater than");
+                colorIndex = 7;
+                note = 7;
+              }
+              if (ball.y < 5) {
+                console.log("less than");
+                colorIndex = 0;
+                note = 0;
+              }
+              console.log("music",note)
+              Soundfont.instrument(context, 'acoustic_grand_piano', { gain: 5 }).then(function (clavinet) {
+                clavinet.play(notes[note]);
+              })
+              console.log('color', colorIndex);
+              ball.color = colorCycle[colorIndex];
+            }
+          }
+        }
+
+        // if the ball hits the sides
+        if (ball.x + ball.vx > canvas.width | ball.x + ball.vx < 0) {
+          ball.vx = -ball.vx;
+
+          // if it hasn't hit a corner yet
+          if (!corner) {
+            // check if it is a corner
+            if (ball.y < 5 || ball.y > canvas.height - 5) {
+              corner = true;
+              cornerTime();
+            }
+            else {
+              // color picker
+              var colorIndex = Math.floor(6 * ball.y/canvas.height) + 1;
+              // choosing the right note
+              var context = new AudioContext();
+              var note = Math.floor(6*ball.y/canvas.height) + 1;
+              console.log("music",note)
+              Soundfont.instrument(context, 'acoustic_grand_piano',{ gain: 5}).then(function (clavinet) {
+                clavinet.play(notes[note]);
+              })
+              console.log('color', colorIndex);
+              ball.color = colorCycle[colorIndex];
+            }
+          }
+        }
+        raf = window.requestAnimationFrame(draw);
+      }
+
+      const timer = ms => new Promise(res => setTimeout(res, ms))
+
+      async function cornerTime(){
+        console.log("it's corner time!");
+        ball.vy *= 3;
+        ball.vx *= 3;
+        song.volume = 1;
+        console.log(song.volume);
+        song.play();
+        for (var i = 0; i < 50; ++i)
+          {
+            if (i==49) {
+              i = -1;
+            }
+            var red = Math.sin(.3*i + 0) * 127 + 128;
+            var grn = Math.sin(.3*i + 2) * 127 + 128;
+            var blu = Math.sin(.3*i + 4) * 127 + 128;
+            //console.log( '<font color="' + (red,grn,blu) + '">&#9608;</font>');
+            ball.color = "rgb("+red+","+grn+","+blu+")";
+            ball.vy *= 1.005;
+            ball.vx *= 1.005;
+            await timer(250);
+            if (song.ended || !running){
+              if (song.ended){
+                ball.color = "#000000";
+              }
+              song.currentTime = 0;
+              break;
+            }
+          }
+      }
+
+      canvas.addEventListener('mousemove', function(e) {
+        if (!running) {
+          clear();
+          ball.x = e.clientX;
+          ball.y = e.clientY;
+          ball.draw();
+        }
+      });
+
+      canvas.addEventListener('click', function(e) {
+        if (!running) {
+          raf = window.requestAnimationFrame(draw);
+          running = true;
+        }
+      });
+
+      canvas.addEventListener('mouseout', function(e) {
+        window.cancelAnimationFrame(raf);
+        song.pause();
+        corner = false;
+        ball.vx= 5;
+        ball.vy= 2;
+        ball.color = "#FFFFFC";
+        running = false;
+     });
+
+      ball.draw();
     }
   </script>
+  <style>
+    body {
+      margin: 0px;
+    }
+  </style>
  </head>
- <body onload="draw();">
-   <canvas id="canvas" width="150" height="200"></canvas>
+ <body onload="ballbo();">
+   <canvas id="canvas" width="900" height="600"></canvas>
  </body>
 </html>
